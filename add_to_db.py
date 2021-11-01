@@ -5,7 +5,8 @@ import sqlite3
 TABLES = [
     "COUNTS(place_id, year, category_id, count)",
     "VARIABLES(var_name, population, nomis_table_code_2011)",
-    "CATEGORIES(var_id, val_name, measurement_unit, stat_unit, nomis_code_2011)"
+    "CATEGORIES(var_id, val_name, measurement_unit, stat_unit, nomis_code_2011)",
+    "LSOA2011_LAD2020_LOOKUP(lsoa2011code, lad2020code)"
 ]
 
 def csv_iter(filename):
@@ -73,19 +74,41 @@ def add_data_tables(cur, nomis_col_id_to_category_id):
                         geog_code,
                         2011,
                         nomis_col_id_to_category_id[column_code],
-                        d[column_code]
+                        float(d[column_code])
                     ))
             cur.executemany('insert into COUNTS values (?,?,?,?)', rows)
+
+def add_lsoa_lad_lookup(cur):
+    for d in csv_iter("lookup/lsoa2011_lad2020.csv"):
+        lsoa = d["code"]
+        lad = "best_fit_" + d["parent"]
+        cur.execute('insert into LSOA2011_LAD2020_LOOKUP values (?,?)', [lsoa, lad])
+
+def add_best_fit_lad2020_rows(cur):
+    cur.execute(
+        '''select lad2020code, year, category_id, sum(count) from (
+                select lad2020code, year, category_id, count from LSOA2011_LAD2020_LOOKUP
+                left join COUNTS on LSOA2011_LAD2020_LOOKUP.lsoa2011code = COUNTS.place_id
+            ) group by lad2020code, year, category_id;''')
+    new_rows = cur.fetchall()
+    cur.executemany('insert into COUNTS values (?,?,?,?)', new_rows)
 
 def main():
     con = sqlite3.connect('census.db')
     cur = con.cursor()
 
     create_tables(cur)
-
     nomis_table_id_to_var_id = add_meta_tables(cur)
     nomis_col_id_to_category_id = add_desc_tables(cur, nomis_table_id_to_var_id)
     add_data_tables(cur, nomis_col_id_to_category_id)
+
+    cur.execute('create index idx_counts_place_id on counts(place_id)')
+
+    add_lsoa_lad_lookup(cur)
+
+    add_best_fit_lad2020_rows(cur)
+
+    cur.execute('create index idx_counts_category_id on counts(category_id)')
 
     con.commit()
     con.close()
