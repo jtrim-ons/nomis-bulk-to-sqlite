@@ -1,5 +1,7 @@
 # A script for getting lots of bulk data from Nomis
 
+(To get more data, remove the grep from download-data.sh)
+
 Random notes:
 - This might not be reliable!
 - ./download-data.sh will get lots of data
