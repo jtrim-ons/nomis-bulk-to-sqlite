@@ -7,6 +7,8 @@ I've uploaded a small example database, `census-example.db`.
 
 I'm hoping that this approach will be useful for some pre-processing tasks.
 
+Note: counts are currently stored as floating-point numbers...
+
 ### Example: get all data for a given place
 
 ```
