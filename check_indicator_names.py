@@ -13,7 +13,7 @@ def process_items(indicators, cur):
             db_row = cur.fetchone()
             if db_row is None:
                 continue
-            if db_row[1] != item["name"]:
+            if db_row[1] != item["name"] and db_row[1] not in item["name"] and item["name"] not in db_row[1]:
                 print("---", code, "--", db_row[1], "--", item["name"])
 
         if "children" in item:
