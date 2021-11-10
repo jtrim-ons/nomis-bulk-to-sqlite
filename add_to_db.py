@@ -71,11 +71,10 @@ def add_meta_tables(cur):
         for d in csv_iter(filename):
             print(d)
             sql = '''insert into VARIABLES (var_name,population,nomis_table_code_2011)
-                      values (?,?,?)
-                      returning var_id;
+                      values (?,?,?);
                     '''
             cur.execute(sql, [d["DatasetTitle"], d["StatisticalPopulations"], d["DatasetId"]])
-            nomis_table_id_to_var_id[d["DatasetId"]] = cur.fetchone()[0]
+            nomis_table_id_to_var_id[d["DatasetId"]] = cur.lastrowid
         print()
     return nomis_table_id_to_var_id
 
@@ -94,8 +93,7 @@ def add_desc_tables(cur, nomis_table_id_to_var_id):
             print("TABLECODE", table_code)
             var_id = nomis_table_id_to_var_id[table_code]
             sql = '''insert into CATEGORIES (var_id,category_name,measurement_unit,stat_unit,nomis_code_2011)
-                     values (?,?,?,?,?)
-                     returning category_id;
+                     values (?,?,?,?,?);
                   '''
             cur.execute(sql, [
                 var_id,
@@ -105,7 +103,7 @@ def add_desc_tables(cur, nomis_table_id_to_var_id):
                 d["ColumnVariableCode"]
             ])
             nomis_col_id_to_category_info[d["ColumnVariableCode"]] = CategoryInfo(
-                cur.fetchone()[0],
+                cur.lastrowid,
                 d["ColumnVariableMeasurementUnit"]
             )
         print()
@@ -116,11 +114,10 @@ def add_counts(cur, rows, placetype_id, place_code_to_id):
         if row[0] not in place_code_to_id:
             # This place code isn't in the places table yet, so add it.
             sql = '''insert into PLACES (place_code,place_name,placetype_id)
-                      values (?,?,?)
-                      returning place_id;
+                      values (?,?,?);
                     '''
             cur.execute(sql, (row[0], row[0] + " name TODO", placetype_id))
-            place_code_to_id[row[0]] = cur.fetchone()[0]
+            place_code_to_id[row[0]] = cur.lastrowid
         row[0] = place_code_to_id[row[0]]   # replace code with ID
     sql = 'insert into COUNTS (place_id, year, category_id, count) values (?,?,?,?);'
     cur.executemany(sql, rows)   # Much faster than executemany
